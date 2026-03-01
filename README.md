@@ -1,28 +1,6 @@
 # Research Assist AI
 
-## Author Notes
-
-This project was initiated an experiment to help me get familiar with AI-assisted software development.
-
-- Day 1: Software Design and Brainstorming
-   - First step was to manually prepare a requirement specification file, which contained high to medium level design idea of the project.
-   - With the spec file ready, I initiated an planning session with Claude (Opus 4.6) via GitHub Copilot to analyse requirements.
-   - Based on our discussion, following documentation in the design/phase-1 folder were prepared:
-      - design-doc.md
-      - implementation-plan.md
-      - implementation-standards.md
-   - Looking back, this one day of planning and documentation actually smoothened out the rest of the process.
-- Day 2: Implementation Phase 1-5
-   - Performed initially using Claude Sonnet 4.5.
-   - If any issues were encountered during implementation or testing, I requested Claude to document them in implementation-issues.md
-   - Claude Sonnet 4.5 stopped working citing rate limiting due to request limit being reached, shifted to Sonnet 4.6 for rest of the work.
-   - Spent a lot of time fixing the backend docker image, which was facing virtual environment issues due to uv.
-0 Day 3: Implementation Phase 6-7 and testing
-   - Rest of the work was completed using Claude Opus 4.6 (had Copilot tokens to burn before allowance reset).
-   - Opus 4.6 retained context of the project much better compared to Sonnet 4.5. I would periodically ask it to audit the code (logical, linting and type errors) and make fixes to ensure code performed as per the implementation plan.
-   - Lot of last minute fixes popped up, mainly due to Opus 4.6 cleaning up the deviations Sonnet 4.5 had done.
-   - Decided to have additional scope to have dark mode in the UI. Implementation complete.
-   - Application now runs locally without major issues.
+This project was initiated as an experiment to help me get familiar with AI-assisted software development. Timeline and observations have been recorded to the best of my knowledge in AUTHOR-NOTES.md.
 
 ## Overview
 
