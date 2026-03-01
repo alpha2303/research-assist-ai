@@ -1,0 +1,130 @@
+# ============================================================
+# Research Assist AI — Monorepo .gitignore
+# ============================================================
+
+# ---------- Environment & Secrets ----------
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ---------- OS ----------
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*.sw?
+
+# ---------- IDE / Editor ----------
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# ==========================================
+#  Python / Backend
+# ==========================================
+
+# Byte-compiled / optimised
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Build / distribution
+build/
+dist/
+wheels/
+*.egg-info/
+.Python
+
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+
+# uv
+.uv/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# mypy / type checkers
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pytype/
+
+# ==========================================
+#  Node.js / Frontend
+# ==========================================
+
+node_modules/
+dist/
+dist-ssr/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ==========================================
+#  Terraform / Infrastructure
+# ==========================================
+
+# Local .terraform directories
+**/.terraform/
+
+# State files (should be in remote backend, not committed)
+*.tfstate
+*.tfstate.*
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Variable override files
+*.tfvars
+!*.tfvars.example
+
+# Provider lock (can be committed, but often excluded in dev)
+.terraform.lock.hcl
+
+# Plan files
+*.tfplan
+
+# ==========================================
+#  Docker
+# ==========================================
+
+# Docker Compose override (local dev customisations)
+docker-compose.override.yml
+
+# ==========================================
+#  Miscellaneous
+# ==========================================
+
+# Compressed archives
+*.zip
+*.tar.gz
+*.tgz
+*.rar
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/

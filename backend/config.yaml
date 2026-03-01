@@ -1,0 +1,50 @@
+# Research Assist AI - Application Configuration
+# This file contains all configurable parameters for the RAG pipeline
+# All values can be overridden via environment variables (e.g., CHUNKING__CHUNK_SIZE_TOKENS=1000)
+
+# RAG Pipeline — Chunking
+chunking:
+  strategy: "recursive"  # Options: recursive | fixed | semantic
+  chunk_size_tokens: 800
+  overlap_tokens: 150
+  split_separators:
+    - "\n## "      # Markdown heading level 2
+    - "\n### "     # Markdown heading level 3
+    - "\n\n"       # Paragraph break
+    - "\n"         # Line break
+    - ". "         # Sentence break
+
+# RAG Pipeline — Retrieval
+retrieval:
+  top_k: 5
+  similarity_threshold: 0.7
+  use_hybrid_search: true
+  bm25_weight: 0.3
+  vector_weight: 0.7
+
+# Conversation Memory
+memory:
+  recent_message_count: 10
+  batch_fold_size: 5
+  summarization_model: "amazon.nova-micro-v1:0"
+  max_summary_tokens: 500
+
+# Embedding Configuration
+embedding:
+  model_id: "amazon.titan-embed-text-v2:0"
+  dimensions: 1024  # Options: 256, 512, 1024
+
+# LLM (Q&A) Configuration
+llm:
+  model_id: "amazon.nova-micro-v1:0"  # dev: nova-micro, prod: nova-lite/nova-pro
+  max_output_tokens: 2048
+  temperature: 0.3
+  context_window: 128000  # Nova Micro supports ~128k tokens
+
+# Document Processing
+document_processing:
+  supported_formats:
+    - "application/pdf"
+  max_file_size_mb: 50
+  primary_parser: "pymupdf4llm"
+  fallback_parser: "pdfplumber"

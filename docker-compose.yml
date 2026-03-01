@@ -1,0 +1,151 @@
+version: '3.8'
+
+services:
+  # PostgreSQL with pgvector extension
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: research-assist-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-research_assist}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - research-assist-network
+
+  # Redis for task queue (Celery)
+  redis:
+    image: redis:7-alpine
+    container_name: research-assist-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - research-assist-network
+
+  # LocalStack for local AWS services (DynamoDB, S3)
+  localstack:
+    image: localstack/localstack:latest
+    container_name: research-assist-localstack
+    ports:
+      - "4566:4566"  # Gateway port for all services
+    environment:
+      - SERVICES=dynamodb,s3
+      - DEBUG=1
+      - PERSISTENCE=1
+    volumes:
+      - localstack_data:/var/lib/localstack
+      - ./docker/localstack-init.sh:/etc/localstack/init/ready.d/init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:4566/_localstack/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - research-assist-network
+
+  # Backend (FastAPI)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: research-assist-backend
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-research_assist}
+      - REDIS_URL=redis://redis:6379/0
+      - AWS_PROFILE=${AWS_PROFILE:-default}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - DYNAMODB_ENDPOINT_URL=http://localstack:4566
+      - S3_ENDPOINT_URL=http://localstack:4566
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "8000:8000"
+    volumes:
+      - ~/.aws:/root/.aws:ro  # Mount AWS credentials for Bedrock access
+      - ./backend/app:/app/app  # Mount source code for hot reload
+      - ./backend/config.yaml:/app/config.yaml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - research-assist-network
+
+  # Celery Worker for async document processing
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: research-assist-celery-worker
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-research_assist}
+      - REDIS_URL=redis://redis:6379/0
+      - AWS_PROFILE=${AWS_PROFILE:-default}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - DYNAMODB_ENDPOINT_URL=http://localstack:4566
+      - S3_ENDPOINT_URL=http://localstack:4566
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ~/.aws:/root/.aws:ro
+      - ./backend/app:/app/app  # Mount source code for consistency
+      - ./backend/config.yaml:/app/config.yaml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    command: watchmedo auto-restart --directory=./app --pattern=*.py --recursive -- celery -A app.worker.celery_app worker --loglevel=info -Q celery,document_processing
+    networks:
+      - research-assist-network
+
+  # Frontend (React + Vite) - Optional: can run outside Docker for better HMR
+  # Uncomment if you want to run frontend inside Docker
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile.dev
+  #   container_name: research-assist-frontend
+  #   ports:
+  #     - "5173:5173"
+  #   volumes:
+  #     - ./frontend:/app
+  #     - /app/node_modules
+  #   environment:
+  #     - VITE_API_BASE_URL=http://localhost:8000
+  #   command: npm run dev -- --host
+  #   networks:
+  #     - research-assist-network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  localstack_data:
+    driver: local
+
+networks:
+  research-assist-network:
+    driver: bridge
