@@ -189,11 +189,13 @@ class ChatService:
             )
 
             # Step 5: Stream LLM response
-            accumulated_response = ""
+            # Use a list to accumulate tokens and join at the end to avoid
+            # O(n²) behaviour from repeated string concatenation.
+            accumulated_tokens: list[str] = []
 
             try:
                 async for token in self.llm_provider.generate_stream(prompt):  # type: ignore[misc]
-                    accumulated_response += token
+                    accumulated_tokens.append(token)
                     yield {"type": "token", "content": token}
             except ClientError as exc:
                 user_msg = _classify_aws_error(exc)
@@ -243,6 +245,7 @@ class ChatService:
                 yield {"type": "sources", "sources": sources_data}
 
             # Step 7: Store assistant response
+            accumulated_response = "".join(accumulated_tokens)
             try:
                 message_result = await self.chat_repo.add_message(
                     chat_id=chat_id,

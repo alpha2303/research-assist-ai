@@ -302,3 +302,49 @@ class TestDocumentService:
         big = b"x" * (51 * 1024 * 1024)
         with pytest.raises(ValueError, match="exceeds maximum"):
             document_service._validate_file(big, "application/pdf")
+
+    def test_validate_file_bad_magic_bytes(self, document_service):
+        """Test that a file claiming to be PDF but lacking %PDF magic bytes is rejected."""
+        # Content-Type says PDF but content is not a PDF
+        with pytest.raises(ValueError, match="does not match the declared type"):
+            document_service._validate_file(b"This is not a PDF", "application/pdf")
+
+    def test_validate_file_good_magic_bytes(self, document_service):
+        """Test that a file with valid %PDF magic bytes passes validation."""
+        valid_pdf_header = b"%PDF-1.4 binary content here"
+        # Should not raise
+        document_service._validate_file(valid_pdf_header, "application/pdf")
+
+    # ── race condition (IntegrityError) ───────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_upload_document_race_condition(
+        self, document_service, mock_storage, mock_document_repo, mock_task_queue
+    ):
+        """
+        Test that a concurrent upload (IntegrityError) is handled gracefully:
+        the service falls back to returning the existing document as a duplicate.
+        """
+        from sqlalchemy.exc import IntegrityError
+        from app.models.database import DocumentStatus
+
+        file_content = b"%PDF-1.4 race condition test"
+        # Use the actual enum value so the status comparison inside the service
+        # works correctly (ORM returns enum values, not plain strings).
+        existing_doc = _make_doc_orm(status=DocumentStatus.QUEUED)
+
+        # get_by_hash returns None initially (passes dedup check) but after the
+        # IntegrityError we return the existing document on the second call.
+        mock_document_repo.get_by_hash.side_effect = [None, existing_doc]
+        mock_document_repo.create.side_effect = IntegrityError(
+            "duplicate key", params={}, orig=Exception("duplicate key")
+        )
+
+        response, is_duplicate = await document_service.upload_document(
+            file_content, "test.pdf", "application/pdf"
+        )
+
+        assert is_duplicate is True
+        assert response.is_duplicate is True
+        # Processing task submitted because status is QUEUED
+        mock_task_queue.submit_task.assert_called_once()

@@ -2,6 +2,7 @@
 
 This module provides reusable fixtures for unit tests, including:
 - DynamoDB mock for chat testing
+- tiktoken mock to avoid network access during tests
 
 Integration test fixtures (async_engine, async_session, async_client) are in
 tests/integration/conftest.py.
@@ -11,6 +12,43 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+
+# ---------------------------------------------------------------------------
+# tiktoken mock — prevents tests from making network calls to download the
+# cl100k_base encoding file.  The mock approximates token count as
+# len(text) // 4, which is close to reality for English text and passes all
+# existing token-count assertions.  decode() returns an empty string because
+# truncation tests only check for the presence of the truncation marker, not
+# the reconstructed text.
+# ---------------------------------------------------------------------------
+
+class _MockEncoding:
+    """Lightweight tiktoken encoding mock that requires no network access."""
+
+    _CHARS_PER_TOKEN = 4
+
+    def encode(self, text: str) -> list[int]:
+        """Return a token list whose length approximates real token count."""
+        n_tokens = max(0, len(text) // self._CHARS_PER_TOKEN)
+        return list(range(n_tokens))
+
+    def decode(self, tokens: list[int]) -> str:
+        """Return empty string (token ids are opaque ints in the mock)."""
+        return ""
+
+
+@pytest.fixture(autouse=True, scope="session")
+def mock_tiktoken_encoding():
+    """Patch tiktoken.get_encoding for the entire test session.
+
+    This avoids network calls to download the cl100k_base BPE file which
+    would fail in environments without internet access (CI sandboxes, offline
+    dev machines).
+    """
+    mock_enc = _MockEncoding()
+    with patch("tiktoken.get_encoding", return_value=mock_enc):
+        yield mock_enc
 
 
 @pytest.fixture

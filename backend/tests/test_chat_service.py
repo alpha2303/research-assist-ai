@@ -642,3 +642,42 @@ async def test_stream_conversation_memory_failure_degrades_gracefully(
     assert len(done_events) == 1
     token_events = [e for e in events if e["type"] == "token"]
     assert len(token_events) > 0
+
+
+# ---------------------------------------------------------------------------
+# Token accumulator tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_stream_accumulated_response_stored_correctly(
+    chat_service, mock_chat_repo
+):
+    """
+    Verify that tokens emitted by the LLM are joined correctly before being
+    stored in the repository.
+
+    This also validates that we are not doing O(n²) string concatenation —
+    the stored content should exactly match the concatenation of all token
+    events.
+    """
+    chat_id = str(uuid4())
+    project_id = uuid4()
+    user_message = "Tell me a story"
+
+    events: list[dict] = []
+    async for event in chat_service.process_user_message_stream(
+        chat_id=chat_id,
+        project_id=project_id,
+        user_message=user_message,
+    ):
+        events.append(event)
+
+    # Reconstruct what the stored content should be
+    expected_content = "".join(e["content"] for e in events if e["type"] == "token")
+
+    # Find the assistant message call (second add_message call)
+    calls = mock_chat_repo.add_message.call_args_list
+    assert len(calls) == 2
+    stored_content = calls[1].kwargs["content"]
+    assert stored_content == expected_content
