@@ -218,12 +218,13 @@ class RetrievalService:
                 embedding_model_id=current_model_id,
             )
         else:
-            # Vector-only search
+            # Vector-only search: also use no threshold so instructional queries
+            # aren't filtered out (top-K by distance is sufficient here too)
             return await self.vector_store.similarity_search(
                 query_embedding=query_embedding,
                 document_ids=document_ids,
                 top_k=top_k,
-                similarity_threshold=self.settings.retrieval.similarity_threshold,
+                similarity_threshold=None,
                 embedding_model_id=current_model_id,
             )
 

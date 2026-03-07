@@ -14,6 +14,19 @@ from app.db.base import init_db
 from app.routers import projects, documents, chats, admin
 from app.services.chat_service import ServiceUnavailableError
 
+# ---------------------------------------------------------------------------
+# Logging — configure *before* any application code so every module that
+# calls ``logging.getLogger(__name__)`` inherits a usable handler.
+# ---------------------------------------------------------------------------
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
+)
+# Reduce noise from chatty libraries; keep our app at INFO.
+logging.getLogger("botocore").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+
 logger = logging.getLogger(__name__)
 
 # Friendly labels for common HTTP status codes used in error responses.

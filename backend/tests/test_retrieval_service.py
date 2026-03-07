@@ -31,8 +31,8 @@ def mock_settings() -> Settings:
     """Create mock settings with retrieval config."""
     settings = Mock(spec=Settings)
     settings.retrieval = RetrievalConfig(
-        top_k=5,
-        similarity_threshold=0.7,
+        top_k=15,
+        similarity_threshold=0.5,
         use_hybrid_search=True,
         bm25_weight=0.3,
         vector_weight=0.7
@@ -153,7 +153,7 @@ async def test_retrieve_for_query_success(
     assert call_args.kwargs['query_embedding'] == [0.1, 0.2, 0.3]
     assert call_args.kwargs['query_text'] == query
     assert set(call_args.kwargs['document_ids']) == {doc1_id, doc2_id}
-    assert call_args.kwargs['top_k'] == 5
+    assert call_args.kwargs['top_k'] == 15
     assert call_args.kwargs['vector_weight'] == 0.7
     assert call_args.kwargs['bm25_weight'] == 0.3
     
@@ -305,8 +305,8 @@ async def test_retrieve_for_query_vector_only_search(
     # Verify correct parameters
     call_args = mock_vector_store.similarity_search.call_args
     assert call_args.kwargs['query_embedding'] == [0.1, 0.2, 0.3]
-    assert call_args.kwargs['top_k'] == 5
-    assert call_args.kwargs['similarity_threshold'] == 0.7
+    assert call_args.kwargs['top_k'] == 15
+    assert call_args.kwargs['similarity_threshold'] is None
 
 
 @pytest.mark.asyncio

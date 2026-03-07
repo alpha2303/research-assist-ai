@@ -73,7 +73,7 @@ class VectorStore(ABC):
         query_embedding: list[float],
         document_ids: list[UUID],
         top_k: int = 5,
-        similarity_threshold: float = 0.7,
+        similarity_threshold: float | None = 0.7,
         embedding_model_id: str | None = None,
     ) -> list[SearchResult]:
         """
@@ -83,7 +83,8 @@ class VectorStore(ABC):
             query_embedding: Query vector
             document_ids: Limit search to these documents (project scope)
             top_k: Number of results to return
-            similarity_threshold: Minimum similarity score
+            similarity_threshold: Minimum similarity score (0-1). Pass None to
+                disable threshold filtering and return top-K by distance only.
             embedding_model_id: If set, only match chunks with this model ID
             
         Returns:
