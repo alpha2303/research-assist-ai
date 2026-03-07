@@ -1,5 +1,6 @@
 """API router for document management endpoints."""
 
+import os
 from typing import Annotated
 from uuid import UUID
 
@@ -85,12 +86,16 @@ async def upload_document(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to read file: {str(e)}"
         ) from e
+
+    # Strip any directory components from the filename so that a crafted
+    # name like "../../etc/passwd.pdf" is stored only as "passwd.pdf".
+    safe_filename = os.path.basename(file.filename or "") or "untitled.pdf"
     
     # Upload document
     try:
         response, is_duplicate = await service.upload_document(
             file_content=content,
-            filename=file.filename or "untitled.pdf",
+            filename=safe_filename,
             content_type=file.content_type or "application/pdf"
         )
         return response

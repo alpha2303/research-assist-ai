@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 from io import BytesIO
 from uuid import UUID
+
+from sqlalchemy.exc import IntegrityError
 
 from app.core.config import Settings
 from app.core.interfaces.task_queue import TaskQueue
@@ -18,6 +21,19 @@ from app.schemas.document import (
     DocumentUploadResponse,
 )
 from app.services.storage_service import StorageService
+
+logger = logging.getLogger(__name__)
+
+# Magic bytes used to verify file content matches its declared MIME type.
+# The content-type header is user-controlled and cannot be trusted alone.
+#
+# IMPORTANT: Every MIME type listed in
+# ``DocumentProcessingConfig.supported_formats`` SHOULD have a corresponding
+# entry here.  Types that are absent from this dict will skip content
+# validation and rely solely on the content-type header check.
+_MIME_MAGIC_BYTES: dict[str, bytes] = {
+    "application/pdf": b"%PDF",
+}
 
 
 class DocumentService:
@@ -97,14 +113,38 @@ class DocumentService:
             return response, True
         
         # Create new document record
-        document = await self.document_repo.create({
-            "title": filename,
-            "file_hash": file_hash,
-            "file_size_bytes": len(file_content),
-            "mime_type": content_type,
-            "s3_key": s3_key,
-            "status": DocumentStatus.QUEUED,
-        })
+        try:
+            document = await self.document_repo.create({
+                "title": filename,
+                "file_hash": file_hash,
+                "file_size_bytes": len(file_content),
+                "mime_type": content_type,
+                "s3_key": s3_key,
+                "status": DocumentStatus.QUEUED,
+            })
+        except IntegrityError:
+            # A concurrent upload of the same file won the race and already
+            # inserted a row with this file_hash (or s3_key).  Fall back to
+            # returning the existing document so the caller gets consistent
+            # behaviour regardless of which request "wins".
+            existing_doc = await self.document_repo.get_by_hash(file_hash)
+            if existing_doc is None:
+                # Unexpected: the constraint fired but no matching row exists.
+                # This could indicate a constraint on a different column or a
+                # transient DB issue.  Log and re-raise so the caller can
+                # surface an appropriate error.
+                logger.error(
+                    "IntegrityError on document create but no row found for "
+                    "hash %s — possible constraint violation on a non-hash "
+                    "column.",
+                    file_hash,
+                )
+                raise
+            response = DocumentUploadResponse.model_validate(existing_doc)
+            response.is_duplicate = True
+            if existing_doc.status == DocumentStatus.QUEUED:  # type: ignore[truthy-bool]
+                await self._submit_processing_task(existing_doc.id)  # type: ignore[arg-type]
+            return response, True
         
         response = DocumentUploadResponse.model_validate(document)
         response.is_duplicate = False
@@ -281,4 +321,14 @@ class DocumentService:
             raise ValueError(
                 f"Unsupported file type: {content_type}. "
                 f"Supported types: {', '.join(supported_types)}"
+            )
+
+        # Verify the actual file content matches the declared MIME type by
+        # checking magic bytes.  The Content-Type header is user-controlled
+        # and must not be trusted in isolation.
+        expected_magic = _MIME_MAGIC_BYTES.get(content_type)
+        if expected_magic and not file_content.startswith(expected_magic):
+            raise ValueError(
+                f"File content does not match the declared type '{content_type}'. "
+                "Please upload a valid file."
             )

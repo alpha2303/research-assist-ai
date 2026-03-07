@@ -5,6 +5,7 @@ from typing import Any
 from uuid import UUID
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.database import Document, DocumentStatus, ProjectDocument
@@ -31,10 +32,19 @@ class DocumentRepository:
             
         Returns:
             Created document model
+            
+        Raises:
+            IntegrityError: If a document with the same unique key already exists
+                (e.g., duplicate file_hash).  The session is rolled back before
+                re-raising so the caller can continue using it.
         """
         document = Document(**document_data)
         self.session.add(document)
-        await self.session.commit()
+        try:
+            await self.session.commit()
+        except IntegrityError:
+            await self.session.rollback()
+            raise
         await self.session.refresh(document)
         return document
 

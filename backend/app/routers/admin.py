@@ -27,9 +27,10 @@ class ReEmbedResponse(BaseModel):
     """Response returned when a re-embedding task is submitted."""
 
     status: str
-    task_id: str
+    task_id: str | None
     stale_chunk_count: int
     current_model_id: str
+    message: str | None = None
 
 
 class ReEmbedStatusResponse(BaseModel):
@@ -67,9 +68,14 @@ async def trigger_re_embed(
         stale_count = await chunk_repo.count_stale_chunks(current_model_id)
 
     if stale_count == 0:
-        raise HTTPException(
-            status_code=200,
-            detail="All chunks are already using the current embedding model.",
+        # Nothing to do — return a 200 OK with an informational message
+        # instead of misusing HTTPException (which is reserved for errors).
+        return ReEmbedResponse(
+            status="no_op",
+            task_id=None,
+            stale_chunk_count=0,
+            current_model_id=current_model_id,
+            message="All chunks are already using the current embedding model.",
         )
 
     # Enqueue the Celery task
