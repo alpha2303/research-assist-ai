@@ -170,6 +170,9 @@ class Settings(BaseSettings):
 
         # Update configuration sections with YAML values
         # Environment variables take precedence, so we only update if not already set
+        if "log_level" in yaml_config:
+            self.log_level = yaml_config.get("log_level", "INFO")
+            
         if "chunking" in yaml_config:
             self.chunking = ChunkingConfig(**yaml_config["chunking"])
 

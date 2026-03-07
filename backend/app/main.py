@@ -16,10 +16,13 @@ from app.services.chat_service import ServiceUnavailableError
 # Logging — configure *before* any application code so every module that
 # calls ``logging.getLogger(__name__)`` inherits a usable handler.
 # ---------------------------------------------------------------------------
-_log_level_name = os.getenv("LOG_LEVEL", "INFO").upper()
-_log_level = getattr(logging, _log_level_name, logging.INFO)
+
+# Load Application Config
+_settings = get_settings()
+logging.root.setLevel(getattr(logging, _settings.log_level.upper(), logging.INFO))
+
 logging.basicConfig(
-    level=_log_level,
+    level=_settings.log_level.upper(),
     format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
     force=True,
@@ -59,12 +62,6 @@ app = FastAPI(
 )
 
 # CORS configuration — loaded from settings (CORS_ORIGINS env var)
-_settings = get_settings()
-
-# Re-apply log level from settings now that config.yaml has been loaded.
-# basicConfig above used the LOG_LEVEL env var as an early bootstrap; this
-# replaces it with the final value from Settings so config.yaml takes effect.
-logging.root.setLevel(getattr(logging, _settings.log_level.upper(), logging.INFO))
 
 _cors_kwargs: dict = {
     "allow_methods": ["*"],
