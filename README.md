@@ -1,5 +1,7 @@
 # Research Assist AI
 
+![Research Assist AI Interface](.assets/interface_20260307.png)
+
 This project was initiated as an experiment to help me get familiar with AI-assisted software development. Timeline and observations have been recorded to the best of my knowledge in AUTHOR-NOTES.md.
 
 ## Overview
