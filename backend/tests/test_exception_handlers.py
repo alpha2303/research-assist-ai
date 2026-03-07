@@ -4,23 +4,36 @@ Verifies that all responses conform to the ErrorResponse schema:
   {"error": str, "message": str, "details": ... | null}
 
 These tests use a lightweight client that does NOT require a running database.
+The ``app`` object is imported lazily inside a fixture so that we can set the
+DATABASE_URL env-var and stub out ``init_db`` *before* the module-level code in
+``app.main`` executes.
 """
+
+import os
+from collections.abc import AsyncGenerator
+from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
-from app.main import app
-
 
 @pytest_asyncio.fixture
-async def client() -> AsyncClient:  # type: ignore[misc]
-    """Lightweight test client — no DB dependency."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test",
-    ) as c:
-        yield c
+async def client() -> AsyncGenerator[AsyncClient, None]:
+    """Lightweight test client — no DB dependency.
+
+    ``app.main`` checks ``DATABASE_URL`` and calls ``init_db()`` at import
+    time.  We patch both so the test suite never needs a real database.
+    """
+    os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test@localhost/test")
+    with patch("app.main.init_db"):
+        from app.main import app
+
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+        ) as c:
+            yield c
 
 
 @pytest.mark.asyncio
