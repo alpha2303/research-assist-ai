@@ -16,6 +16,7 @@ from unittest.mock import patch
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from unittest.mock import MagicMock
 
 
 @pytest_asyncio.fixture
@@ -26,7 +27,9 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     time.  We patch both so the test suite never needs a real database.
     """
     os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test@localhost/test")
-    with patch("app.main.init_db"):
+    # new_callable=MagicMock ensures a synchronous mock — without it, pytest-asyncio
+    # may auto-select AsyncMock, producing an unawaited-coroutine RuntimeWarning.
+    with patch("app.main.init_db", new_callable=MagicMock):
         from app.main import app
 
         async with AsyncClient(

@@ -108,9 +108,11 @@ class TestProcessDocumentAsync:
             mock_chunker.chunk_document_pages.return_value = [chunk_mock]
             mock_chunker_class.return_value = mock_chunker
 
-            # Embeddings
-            mock_embedding = AsyncMock()
-            mock_embedding.embed_batch.return_value = [[0.1] * 1024]
+            # Embeddings — use MagicMock as base so that sync methods like
+            # get_model_id() aren't turned into AsyncMock children that produce
+            # unawaited coroutines when called without await in production code.
+            mock_embedding = MagicMock()
+            mock_embedding.embed_batch = AsyncMock(return_value=[[0.1] * 1024])
             mock_embedding.get_model_id.return_value = "amazon.titan-embed-text-v2:0"
             mock_embedding_class.return_value = mock_embedding
 
