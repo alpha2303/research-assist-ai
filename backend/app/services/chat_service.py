@@ -417,7 +417,10 @@ class ChatService:
         empty = RetrievalResult(context="", sources=[], chunk_count=0)
 
         if self.retrieval_service is None:
-            logger.warning("Retrieval skipped — no retrieval_service configured")
+            logger.info(
+                "Retrieval skipped for project %s — retrieval_service not configured",
+                project_id,
+            )
             return empty
 
         try:
@@ -425,7 +428,7 @@ class ChatService:
                 project_id=project_id,
                 query=user_message,
             )
-            logger.info(
+            logger.debug(
                 "Retrieval for project %s returned %d chunks",
                 project_id, result.chunk_count,
             )

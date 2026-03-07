@@ -148,6 +148,9 @@ class PGVectorStore(VectorStore):
             List of search results with fused ranking
         """
         # Fetch more results from each method for better fusion
+        # A 3x multiplier gives RRF enough candidates from both vector and BM25
+        # rankings to improve recall and hybrid ranking quality, without the
+        # higher query cost of much larger multipliers (e.g., 5x or 10x).
         fetch_k = top_k * 3
         
         # Perform vector similarity search with no threshold — let RRF rank quality.

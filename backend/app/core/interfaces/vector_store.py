@@ -73,7 +73,7 @@ class VectorStore(ABC):
         query_embedding: list[float],
         document_ids: list[UUID],
         top_k: int = 5,
-        similarity_threshold: float | None = 0.7,
+        similarity_threshold: float | None = None,
         embedding_model_id: str | None = None,
     ) -> list[SearchResult]:
         """

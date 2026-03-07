@@ -119,6 +119,10 @@ class Settings(BaseSettings):
     )
     config_file: str = Field(default="config.yaml")
     environment: str = Field(default="local")
+    log_level: str = Field(
+        default="INFO",
+        description="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL). Override via LOG_LEVEL env var.",
+    )
     cors_origins: list[str] = Field(
         default_factory=lambda: ["http://localhost:5173", "http://localhost:3000"],
         description="Allowed CORS origins. Set via CORS_ORIGINS env var (comma-separated).",
