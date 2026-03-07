@@ -148,9 +148,11 @@ class RetrievalService:
         
         # Step 3: Perform hybrid search
         try:
-            similarity_threshold = None 
-            if self.settings.retrieval.similarity_threshold:
-                similarity_threshold = self.settings.retrieval.similarity_threshold
+            similarity_threshold = (
+                self.settings.retrieval.similarity_threshold
+                if self.settings.retrieval.similarity_threshold is not None
+                else None
+            )
             search_results = await self._perform_search(
                 query_embedding=query_embedding,
                 query_text=query,
