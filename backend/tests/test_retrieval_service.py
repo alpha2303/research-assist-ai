@@ -306,7 +306,7 @@ async def test_retrieve_for_query_vector_only_search(
     call_args = mock_vector_store.similarity_search.call_args
     assert call_args.kwargs['query_embedding'] == [0.1, 0.2, 0.3]
     assert call_args.kwargs['top_k'] == mock_settings.retrieval.top_k
-    assert call_args.kwargs['similarity_threshold'] is None
+    assert call_args.kwargs['similarity_threshold'] == mock_settings.retrieval.similarity_threshold
 
 
 @pytest.mark.asyncio
