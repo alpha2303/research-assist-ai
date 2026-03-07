@@ -92,7 +92,7 @@ app.include_router(admin.router)
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """Return 422 with a structured error body instead of FastAPI's default."""
     return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        status_code=getattr(status, "HTTP_422_UNPROCESSABLE_CONTENT", 422),
         content={
             "error": "Validation error",
             "message": "The request contains invalid or missing fields.",
