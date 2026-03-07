@@ -2,6 +2,9 @@
 # This file contains all configurable parameters for the RAG pipeline
 # All values can be overridden via environment variables (e.g., CHUNKING__CHUNK_SIZE_TOKENS=1000)
 
+# Logging
+log_level: "INFO"  # Options: DEBUG | INFO | WARNING | ERROR | CRITICAL
+
 # RAG Pipeline — Chunking
 chunking:
   strategy: "recursive"  # Options: recursive | fixed | semantic
@@ -16,8 +19,8 @@ chunking:
 
 # RAG Pipeline — Retrieval
 retrieval:
-  top_k: 5
-  similarity_threshold: 0.7
+  top_k: 15
+  similarity_threshold: 0.5
   use_hybrid_search: true
   bm25_weight: 0.3
   vector_weight: 0.7

@@ -417,19 +417,30 @@ class ChatService:
         empty = RetrievalResult(context="", sources=[], chunk_count=0)
 
         if self.retrieval_service is None:
+            logger.info(
+                "Retrieval skipped for project %s — retrieval_service not configured",
+                project_id,
+            )
             return empty
 
         try:
-            return await self.retrieval_service.retrieve_for_query(
+            result = await self.retrieval_service.retrieve_for_query(
                 project_id=project_id,
                 query=user_message,
             )
-        except ValueError:
+            logger.debug(
+                "Retrieval for project %s returned %d chunks",
+                project_id, result.chunk_count,
+            )
+            return result
+        except ValueError as exc:
             # Project has no documents — expected, not an error
+            logger.info("Retrieval: %s", exc)
             return empty
         except Exception as exc:
             logger.error(
                 "Retrieval failed for project %s: %s", project_id, exc,
+                exc_info=True,
             )
             return empty
 

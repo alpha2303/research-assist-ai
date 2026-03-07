@@ -148,11 +148,17 @@ class RetrievalService:
         
         # Step 3: Perform hybrid search
         try:
+            similarity_threshold = (
+                self.settings.retrieval.similarity_threshold
+                if self.settings.retrieval.similarity_threshold is not None
+                else None
+            )
             search_results = await self._perform_search(
                 query_embedding=query_embedding,
                 query_text=query,
                 document_ids=document_ids,
-                top_k=top_k
+                top_k=top_k,
+                similarity_threshold=similarity_threshold
             )
         except Exception as exc:
             logger.error(
@@ -186,7 +192,8 @@ class RetrievalService:
         query_embedding: list[float],
         query_text: str,
         document_ids: list[UUID],
-        top_k: int
+        top_k: int,
+        similarity_threshold: float | None = None
     ) -> list[SearchResult]:
         """
         Perform vector or hybrid search based on configuration.
@@ -218,12 +225,13 @@ class RetrievalService:
                 embedding_model_id=current_model_id,
             )
         else:
-            # Vector-only search
+            # Vector-only search: also use no threshold so instructional queries
+            # aren't filtered out (top-K by distance is sufficient here too)
             return await self.vector_store.similarity_search(
                 query_embedding=query_embedding,
                 document_ids=document_ids,
                 top_k=top_k,
-                similarity_threshold=self.settings.retrieval.similarity_threshold,
+                similarity_threshold=similarity_threshold,
                 embedding_model_id=current_model_id,
             )
 

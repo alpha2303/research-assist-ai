@@ -11,18 +11,17 @@ These tests verify:
 """
 
 from unittest.mock import AsyncMock, Mock
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
 from app.core.config import RetrievalConfig, Settings
 from app.core.interfaces import SearchResult
-from app.models.database import Document, DocumentStatus
+from app.models.database import Document
 from app.repositories.document_repo import DocumentRepository
 from app.services.retrieval_service import (
     RetrievalResult,
-    RetrievalService,
-    SourceReference,
+    RetrievalService
 )
 
 
@@ -31,8 +30,8 @@ def mock_settings() -> Settings:
     """Create mock settings with retrieval config."""
     settings = Mock(spec=Settings)
     settings.retrieval = RetrievalConfig(
-        top_k=5,
-        similarity_threshold=0.7,
+        top_k=15,
+        similarity_threshold=0.5,
         use_hybrid_search=True,
         bm25_weight=0.3,
         vector_weight=0.7
@@ -86,7 +85,8 @@ async def test_retrieve_for_query_success(
     retrieval_service: RetrievalService,
     mock_document_repo: AsyncMock,
     mock_embedding_provider: AsyncMock,
-    mock_vector_store: AsyncMock
+    mock_vector_store: AsyncMock,
+    mock_settings: Settings
 ):
     """Test successful retrieval with hybrid search."""
     # Setup test data
@@ -153,7 +153,7 @@ async def test_retrieve_for_query_success(
     assert call_args.kwargs['query_embedding'] == [0.1, 0.2, 0.3]
     assert call_args.kwargs['query_text'] == query
     assert set(call_args.kwargs['document_ids']) == {doc1_id, doc2_id}
-    assert call_args.kwargs['top_k'] == 5
+    assert call_args.kwargs['top_k'] == mock_settings.retrieval.top_k
     assert call_args.kwargs['vector_weight'] == 0.7
     assert call_args.kwargs['bm25_weight'] == 0.3
     
@@ -305,8 +305,8 @@ async def test_retrieve_for_query_vector_only_search(
     # Verify correct parameters
     call_args = mock_vector_store.similarity_search.call_args
     assert call_args.kwargs['query_embedding'] == [0.1, 0.2, 0.3]
-    assert call_args.kwargs['top_k'] == 5
-    assert call_args.kwargs['similarity_threshold'] == 0.7
+    assert call_args.kwargs['top_k'] == mock_settings.retrieval.top_k
+    assert call_args.kwargs['similarity_threshold'] == mock_settings.retrieval.similarity_threshold
 
 
 @pytest.mark.asyncio

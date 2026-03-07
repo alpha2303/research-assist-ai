@@ -55,7 +55,7 @@ class PGVectorStore(VectorStore):
         query_embedding: list[float],
         document_ids: list[UUID],
         top_k: int = 5,
-        similarity_threshold: float = 0.7,
+        similarity_threshold: float | None = None,
         embedding_model_id: str | None = None,
     ) -> list[SearchResult]:
         """
@@ -65,15 +65,13 @@ class PGVectorStore(VectorStore):
             query_embedding: Query vector
             document_ids: Limit search to these documents
             top_k: Number of results to return
-            similarity_threshold: Minimum similarity score (0-1)
+            similarity_threshold: Minimum similarity score (0-1). Pass None to
+                disable threshold filtering and return top-K by distance only.
             embedding_model_id: If set, only search chunks with this model ID
             
         Returns:
             List of search results sorted by similarity
         """
-        # Convert similarity threshold to distance threshold
-        distance_threshold = 1.0 - similarity_threshold
-        
         # Build query using pgvector's cosine distance operator
         query = select(
             DocumentChunk.id,
@@ -85,8 +83,14 @@ class PGVectorStore(VectorStore):
             (1 - DocumentChunk.embedding.cosine_distance(query_embedding)).label("score")
         ).where(
             DocumentChunk.document_id.in_(document_ids),
-            DocumentChunk.embedding.cosine_distance(query_embedding) <= distance_threshold
         )
+
+        # Apply distance threshold only when explicitly requested
+        if similarity_threshold is not None:
+            distance_threshold = 1.0 - similarity_threshold
+            query = query.where(
+                DocumentChunk.embedding.cosine_distance(query_embedding) <= distance_threshold
+            )
 
         # Mixed-model filter: only match chunks with the same embedding model
         if embedding_model_id is not None:
@@ -144,14 +148,19 @@ class PGVectorStore(VectorStore):
             List of search results with fused ranking
         """
         # Fetch more results from each method for better fusion
-        fetch_k = top_k * 2
+        # A 3x multiplier gives RRF enough candidates from both vector and BM25
+        # rankings to improve recall and hybrid ranking quality, without the
+        # higher query cost of much larger multipliers (e.g., 5x or 10x).
+        fetch_k = top_k * 3
         
-        # Perform vector similarity search
+        # Perform vector similarity search with no threshold — let RRF rank quality.
+        # Instructional queries ("give me a summary...") have low cosine similarity
+        # to document content, so a fixed threshold would filter out all results.
         vector_results = await self.similarity_search(
             query_embedding=query_embedding,
             document_ids=document_ids,
             top_k=fetch_k,
-            similarity_threshold=0.5,  # Lower threshold for fusion
+            similarity_threshold=None,  # No threshold in hybrid mode — RRF handles ranking
             embedding_model_id=embedding_model_id,
         )
         
@@ -190,8 +199,10 @@ class PGVectorStore(VectorStore):
         Returns:
             List of search results sorted by BM25 score
         """
-        # Convert query to tsquery format
-        # Use plainto_tsquery for simple query processing
+        # Convert query to tsquery format.
+        # websearch_to_tsquery uses OR between terms (like a web search), so it
+        # matches chunks containing ANY of the query words rather than ALL of them.
+        # This is much better for instructional queries like "give me a summary of..."
         query = select(
             DocumentChunk.id,
             DocumentChunk.document_id,
@@ -202,13 +213,13 @@ class PGVectorStore(VectorStore):
             # Use ts_rank for BM25-like scoring
             func.ts_rank(
                 DocumentChunk.search_vector,
-                func.plainto_tsquery('english', query_text)
+                func.websearch_to_tsquery('english', query_text)
             ).label("score")
         ).where(
             DocumentChunk.document_id.in_(document_ids),
-            # Match query against search_vector
+            # Match query against search_vector (OR semantics via websearch_to_tsquery)
             DocumentChunk.search_vector.op("@@")(
-                func.plainto_tsquery('english', query_text)
+                func.websearch_to_tsquery('english', query_text)
             )
         ).order_by(
             text("score DESC")

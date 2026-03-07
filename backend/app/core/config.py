@@ -7,6 +7,7 @@ This module provides a tiered configuration system:
 3. Environment variable overrides (e.g., CHUNKING__CHUNK_SIZE_TOKENS)
 """
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -119,6 +120,10 @@ class Settings(BaseSettings):
     )
     config_file: str = Field(default="config.yaml")
     environment: str = Field(default="local")
+    log_level: str = Field(
+        default="INFO",
+        description="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL). Override via LOG_LEVEL env var.",
+    )
     cors_origins: list[str] = Field(
         default_factory=lambda: ["http://localhost:5173", "http://localhost:3000"],
         description="Allowed CORS origins. Set via CORS_ORIGINS env var (comma-separated).",
@@ -166,6 +171,9 @@ class Settings(BaseSettings):
 
         # Update configuration sections with YAML values
         # Environment variables take precedence, so we only update if not already set
+        if "log_level" in yaml_config and "LOG_LEVEL" not in os.environ:
+            self.log_level = yaml_config.get("log_level", "INFO")
+            
         if "chunking" in yaml_config:
             self.chunking = ChunkingConfig(**yaml_config["chunking"])
 

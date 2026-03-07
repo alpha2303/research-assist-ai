@@ -6,13 +6,32 @@ from fastapi import FastAPI, Depends, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from starlette.middleware import Middleware
-from starlette.middleware.errors import ServerErrorMiddleware
 
 from app.core.config import Settings, get_settings
 from app.db.base import init_db
 from app.routers import projects, documents, chats, admin
 from app.services.chat_service import ServiceUnavailableError
+
+# ---------------------------------------------------------------------------
+# Logging — configure *before* any application code so every module that
+# calls ``logging.getLogger(__name__)`` inherits a usable handler.
+# ---------------------------------------------------------------------------
+
+# Load Application Config
+_settings = get_settings()
+_log_level = getattr(logging, _settings.log_level.upper(), logging.INFO)
+logging.root.setLevel(_log_level)
+
+logging.basicConfig(
+    level=_log_level,
+    format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    force=True,
+)
+# Reduce noise from chatty libraries; keep our app at INFO.
+logging.getLogger("botocore").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +63,7 @@ app = FastAPI(
 )
 
 # CORS configuration — loaded from settings (CORS_ORIGINS env var)
-_settings = get_settings()
+
 _cors_kwargs: dict = {
     "allow_methods": ["*"],
     "allow_headers": ["*"],
@@ -74,7 +93,7 @@ app.include_router(admin.router)
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """Return 422 with a structured error body instead of FastAPI's default."""
     return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=getattr(status, "HTTP_422_UNPROCESSABLE_CONTENT", 422),
         content={
             "error": "Validation error",
             "message": "The request contains invalid or missing fields.",
