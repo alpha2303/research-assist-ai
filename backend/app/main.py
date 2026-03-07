@@ -19,10 +19,11 @@ from app.services.chat_service import ServiceUnavailableError
 
 # Load Application Config
 _settings = get_settings()
-logging.root.setLevel(getattr(logging, _settings.log_level.upper(), logging.INFO))
+_log_level = getattr(logging, _settings.log_level.upper(), logging.INFO)
+logging.root.setLevel(_log_level)
 
 logging.basicConfig(
-    level=_settings.log_level.upper(),
+    level=_log_level,
     format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
     force=True,
