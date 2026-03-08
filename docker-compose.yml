@@ -76,7 +76,7 @@ services:
       - PYTHONUNBUFFERED=1
       # Allow requests from the GitHub Pages frontend.  Add any extra origins as
       # a JSON array, or override via .env: CORS_ORIGINS=["https://...","http://localhost:5173"]
-      - 'CORS_ORIGINS=["https://alpha2303.github.io","http://localhost:5173","http://localhost:3000"]'
+      - CORS_ORIGINS=${CORS_ORIGINS:-["https://alpha2303.github.io","http://localhost:5173","http://localhost:3000"]}
     ports:
       - "8000:8000"
     volumes:
