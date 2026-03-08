@@ -1,5 +1,6 @@
 import './App.css'
 import { useState, useCallback, useEffect } from 'react'
+import type { ReactNode } from 'react'
 import { AppProvider } from './context/AppContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { useAppContext } from './context/hooks'
@@ -11,6 +12,8 @@ import ProjectList from './components/ProjectList'
 import DocumentManager from './components/DocumentManager'
 import ChatList from './components/ChatList'
 import ChatInterface from './components/ChatInterface'
+import ServerOfflinePage from './components/ServerOfflinePage'
+import { useBackendStatus } from './hooks/useBackendStatus'
 
 function AppContent() {
   const { state, dispatch } = useAppContext();
@@ -262,14 +265,30 @@ function AppContent() {
   );
 }
 
+/**
+ * Guards the main application behind a backend availability check.
+ * Must live inside ThemeProvider so ServerOfflinePage can use ThemeToggle.
+ */
+function BackendStatusGate({ children }: { children: ReactNode }) {
+  const { isOnline, isChecking, retry } = useBackendStatus();
+
+  if (!isOnline) {
+    return <ServerOfflinePage isRetrying={isChecking} onRetry={retry} />;
+  }
+
+  return <>{children}</>;
+}
+
 function App() {
   return (
     <ThemeProvider>
-      <AppProvider>
-        <ToastProvider>
-          <AppContent />
-        </ToastProvider>
-      </AppProvider>
+      <BackendStatusGate>
+        <AppProvider>
+          <ToastProvider>
+            <AppContent />
+          </ToastProvider>
+        </AppProvider>
+      </BackendStatusGate>
     </ThemeProvider>
   )
 }

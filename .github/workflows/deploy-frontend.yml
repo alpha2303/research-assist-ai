@@ -1,0 +1,54 @@
+name: Deploy Frontend to GitHub Pages
+
+# Run only when a PR is merged into main (i.e. a push lands on main).
+on:
+  push:
+    branches:
+      - main
+
+# Allow the workflow to write to the gh-pages branch.
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build
+        working-directory: frontend
+        env:
+          # Sub-path for GitHub Pages project sites (e.g. /research-assist-ai/).
+          # Override via a repository variable if using a custom domain or user
+          # pages root (set VITE_BASE_PATH to / in that case).
+          VITE_BASE_PATH: ${{ vars.VITE_BASE_PATH || '/research-assist-ai/' }}
+          # Backend API URL used by the built frontend.
+          # Set the VITE_API_BASE_URL repository variable to point at the live
+          # API once deployed (e.g. https://api.yourhost.com).
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+        run: npm run build
+
+      - name: Deploy to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: frontend/dist
+          publish_branch: gh-pages
+          # Keep a tidy commit history on the deploy branch.
+          force_orphan: true
+          commit_message: 'chore: deploy frontend from ${{ github.sha }}'
