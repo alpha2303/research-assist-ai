@@ -7,12 +7,12 @@ import { emitToast } from './toastEvents';
  * Base URL is read from environment variable VITE_API_BASE_URL
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 // When the backend is served through an ngrok tunnel, the free-tier ngrok
 // intercepts browser requests with an HTML warning page unless this header is
 // present.  The header is harmless for non-ngrok backends.
-const isNgrokTunnel = API_BASE_URL.includes('ngrok');
+export const IS_NGROK_TUNNEL = API_BASE_URL.includes('ngrok');
 
 /** Retry configuration */
 const MAX_RETRIES = 1;
@@ -38,7 +38,7 @@ const apiClient: AxiosInstance = axios.create({
   timeout: 30000, // 30 seconds
   headers: {
     'Content-Type': 'application/json',
-    ...(isNgrokTunnel ? { 'ngrok-skip-browser-warning': 'true' } : {}),
+    ...(IS_NGROK_TUNNEL && { 'ngrok-skip-browser-warning': 'true' }),
   },
 });
 
