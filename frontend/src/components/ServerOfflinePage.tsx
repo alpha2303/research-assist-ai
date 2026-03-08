@@ -1,7 +1,7 @@
 /**
  * ServerOfflinePage — shown when the backend cannot be reached.
  *
- * Design mirrors the main application: same colour palette, typography,
+ * Design mirrors the main application: same color palette, typography,
  * dark-mode support, and component styles (card, button).
  */
 
