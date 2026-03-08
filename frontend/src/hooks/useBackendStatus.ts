@@ -12,13 +12,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { API_BASE_URL, IS_NGROK_TUNNEL } from '../api/client';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 const HEALTH_URL = `${API_BASE_URL}/api/health`;
 const HEALTH_TIMEOUT_MS = 5_000;
 const OFFLINE_RETRY_INTERVAL_MS = 30_000;
 const MAX_OFFLINE_RETRIES = 3;
-const IS_NGROK = API_BASE_URL.includes('ngrok');
 
 interface BackendStatus {
   /** True when the last health check succeeded (optimistic default). */
@@ -39,7 +38,7 @@ export function useBackendStatus(): BackendStatus {
     try {
       await axios.get(HEALTH_URL, {
         timeout: HEALTH_TIMEOUT_MS,
-        headers: IS_NGROK ? { 'ngrok-skip-browser-warning': 'true' } : {},
+        headers: IS_NGROK_TUNNEL ? { 'ngrok-skip-browser-warning': 'true' } : {},
       });
       setIsOnline(true);
       setOfflineRetryCount(0);  // reset on successful reconnection
