@@ -114,7 +114,7 @@ export default function ServerOfflinePage({ isRetrying, onRetry }: Props) {
 
           {/* Auto-retry note */}
           <p className="mt-4 text-xs text-gray-400 dark:text-gray-500">
-            Automatically retrying every 30 seconds.
+            Automatically retrying every 30 seconds (up to 3 times).
           </p>
         </div>
       </main>

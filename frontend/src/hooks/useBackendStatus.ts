@@ -17,6 +17,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 const HEALTH_URL = `${API_BASE_URL}/api/health`;
 const HEALTH_TIMEOUT_MS = 5_000;
 const OFFLINE_RETRY_INTERVAL_MS = 30_000;
+const MAX_OFFLINE_RETRIES = 3;
 
 interface BackendStatus {
   /** True when the last health check succeeded (optimistic default). */
@@ -30,14 +31,17 @@ interface BackendStatus {
 export function useBackendStatus(): BackendStatus {
   const [isOnline, setIsOnline] = useState(true);   // optimistic
   const [isChecking, setIsChecking] = useState(false);
+  const [offlineRetryCount, setOfflineRetryCount] = useState(0);
 
   const check = useCallback(async () => {
     setIsChecking(true);
     try {
       await axios.get(HEALTH_URL, { timeout: HEALTH_TIMEOUT_MS });
       setIsOnline(true);
+      setOfflineRetryCount(0);  // reset on successful reconnection
     } catch {
       setIsOnline(false);
+      setOfflineRetryCount((c) => c + 1);
     } finally {
       setIsChecking(false);
     }
@@ -54,12 +58,19 @@ export function useBackendStatus(): BackendStatus {
     return () => window.removeEventListener('online', check);
   }, [check]);
 
-  // Auto-retry while offline.
+  // Auto-retry while offline, up to MAX_OFFLINE_RETRIES times.
   useEffect(() => {
-    if (isOnline) return;
+    if (isOnline || offlineRetryCount >= MAX_OFFLINE_RETRIES) return;
     const id = setInterval(check, OFFLINE_RETRY_INTERVAL_MS);
     return () => clearInterval(id);
-  }, [isOnline, check]);
+  }, [isOnline, offlineRetryCount, check]);
 
-  return { isOnline, isChecking, retry: check };
+  // When the user manually retries, reset the counter so they get
+  // another full round of automatic retries if needed.
+  const retry = useCallback(() => {
+    setOfflineRetryCount(0);
+    check();
+  }, [check]);
+
+  return { isOnline, isChecking, retry };
 }
